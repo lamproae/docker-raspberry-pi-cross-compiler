@@ -104,6 +104,11 @@ while [[ $# != 0 ]]; do
             shift 2
             ;;
 
+        --keep)
+            ARG_CONTAINER="--name rpxc-container"
+            shift
+            ;;
+
         --target)
             ARG_TARGET="$2"
             shift 2
@@ -143,6 +148,9 @@ FINAL_TARGET=${ARG_TARGET-${RPXC_TARGET-$DEFAULT_TARGET}}
 
 # Set the docker run extra args (if any)
 FINAL_ARGS=${ARG_ARGS-${RPXC_ARGS}}
+
+# If the user hasn't asked to keep the container, remove it.
+ARG_CONTAINER=${ARG_CONTAINER- --rm}
 
 case $FINAL_TARGET in
 
@@ -212,7 +220,8 @@ esac
 #------------------------------------------------------------------------------
 # Now, finally, run the command in a container
 #
-docker run -i -t --rm \
+docker run -i -t \
+    $ARG_CONTAINER \
     -v $PWD:/build \
     -e ARCH=arm \
     -e CROSS_COMPILE=$CROSS_COMPILE \
