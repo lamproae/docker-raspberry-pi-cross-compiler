@@ -50,7 +50,9 @@ export HOST
 if [[ $# == 0 ]]; then
     # Presumably the image has been run directly, so help the user get started.
     cat /rpxc/rpxc
+elif [[ -z $BUILDER_UID ]]; then
+    exec "$@"
 else
     # Otherwise ... run the command we were asked to run!
-    exec sudo -E -u $BUILDER_USER "$@"
+    exec chpst -U $BUILDER_USER:$BUILDER_GROUP "$@"
 fi
