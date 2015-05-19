@@ -1,4 +1,4 @@
-FROM debian:jessie
+FROM debian:wheezy
 MAINTAINER Stephen Thirlwall <sdt@dr.com>
 
 WORKDIR /rpxc
@@ -18,27 +18,35 @@ RUN sed -i -e 's/^deb /deb [arch=amd64] /' /etc/apt/sources.list \
         runit \
         ;
 
+RUN curl -s -L https://github.com/raspberrypi/tools/tarball/master | \
+        tar --strip-components 1 -xzf -
+
 RUN dpkg --add-architecture armhf \
- && echo deb '[arch=armhf]' http://mirrordirector.raspbian.org/raspbian/ jessie main \
+ && echo deb '[arch=armhf]' http://mirrordirector.raspbian.org/raspbian/ wheezy main \
         >> /etc/apt/sources.list \
  && curl -Ls https://archive.raspbian.org/raspbian.public.key \
         | apt-key add - \
  && apt-get update \
  ;
 
-RUN curl -s -L https://github.com/raspberrypi/tools/tarball/master | \
-        tar --strip-components 1 -xzf -
-
-RUN DEBIAN_FRONTEND=noninteractive apt-get download \
-        libc6-dev:armhf \
-        libsqlite3-dev:armhf \
-        linux-libc-dev:armhf \
-        ;
-
-# These need to get installed in a chroot environment. Use debootstrap?
-RUN for i in *.deb; do dpkg-deb -x $i /rpxc/arm-bcm2708/gcc-linaro-arm-linux-gnueabihf-raspbian/arm-linux-gnueabihf/libc/; done
-
 WORKDIR /build
 ENTRYPOINT [ "/rpxc/entrypoint.sh" ]
 
-COPY imagefiles/entrypoint.sh imagefiles/rpxc /rpxc/
+COPY imagefiles/* /rpxc/
+
+ENV CCROOT /rpxc/arm-bcm2708/gcc-linaro-arm-linux-gnueabihf-raspbian/arm-linux-gnueabihf/libc/
+
+RUN /rpxc/install-rpi-package \
+        libc6-dev \
+        libsqlite3-0 \
+        libsqlite3-dev \
+        linux-libc-dev \
+        ;
+
+RUN /rpxc/install-rpi-package \
+    libxml2-dev \
+    libxml2
+    ;
+
+RUN /rpxc/install-rpi-package \
+    libsdl1.2-dev
