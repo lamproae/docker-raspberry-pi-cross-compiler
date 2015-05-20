@@ -1,0 +1,42 @@
+#!/usr/bin/perl
+
+use 5.14.0;
+use warnings;
+
+die "usage: $0 package [packages...]" unless @ARGV;
+
+my @queue = @ARGV;
+my %seen = map { $_ => 1 } @queue;
+
+$ENV{DEBIAN_FRONTEND} = 'noninteractive';
+my $arch = 'armhf';
+
+sub run {
+    my $stdout = qx(@_);
+    die unless $? == 0;
+    return $stdout;
+}
+
+sub parse_deps {
+    my ($deps) = @_;
+    chomp $deps;
+    my @deps = split(/,\s*/, $deps);
+    return map { s/\s+\(.*$//r } @deps;
+}
+
+while (my $pkg = shift @queue) {
+    say "Downloading $pkg";
+    run("apt-get download $pkg:$arch");
+    my @deps = parse_deps(run("dpkg -f ${pkg}_*_$arch.deb Depends"));
+    for my $dep (@deps) {
+        if (! $seen{$dep}) {
+            say "** requires $dep";
+            push(@queue, $dep);
+            $seen{$dep}++;
+        }
+    }
+    say "Installing  $pkg";
+    run("dpkg-deb -x ${pkg}_*_$arch.deb $ENV{CCROOT}");
+}
+
+#/rpxc/fix-symlinks $CCROOT
