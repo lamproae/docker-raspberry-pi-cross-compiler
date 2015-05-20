@@ -7,12 +7,8 @@ RASPBIAN_PACKAGES=/rpxc/raspbian-packages.txt
 
 export DEBIAN_FRONTEND=noninteractive
 
-if [[ -e $DEBIAN_PACKAGES || -e $DEBIAN_PACKAGES ]] ; then
-    apt-get update
-fi
-
 if [[ -e $DEBIAN_PACKAGES ]] ; then
-    cat $DEBIAN_PACKAGES | xargs -r apt-get install -y
+    cat $DEBIAN_PACKAGES | xargs -r /rpxc/install-debian-packages
 fi
 
 if [[ -e $RASPBIAN_PACKAGES ]] ; then

@@ -8,7 +8,7 @@ ENV HOST=arm-linux-gnueabihf \
 # I'd put all these into the same ENV command, but you cannot define and use
 # a var in the same command.
 ENV ARCH=arm \
-    TOOLCHAIN_ROOT=/rpxc/$TOOLCHAIN \
+    RASPBIAN_ROOT=/rpxc/$TOOLCHAIN/$HOST/libc \
     CROSS_COMPILE=/rpxc/$TOOLCHAIN/bin/$HOST-
 ENV AS=${CROSS_COMPILE}as \
     AR=${CROSS_COMPILE}ar \

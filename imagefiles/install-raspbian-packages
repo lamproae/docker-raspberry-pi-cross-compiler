@@ -8,9 +8,10 @@ fi
 export DEBIAN_FRONTEND=noninteractive
 ARCH=armhf
 
+apt-get update
 for deb in "$@"; do
     apt-get download $deb:$ARCH
-    dpkg-deb -x ${deb}_*_$ARCH.deb $TOOLCHAIN_ROOT
+    dpkg-deb -x ${deb}_*_$ARCH.deb $RASPBIAN_ROOT
 done
 
-/rpxc/fix-symlinks $TOOLCHAIN_ROOT
+/rpxc/fix-symlinks $RASPBIAN_ROOT
