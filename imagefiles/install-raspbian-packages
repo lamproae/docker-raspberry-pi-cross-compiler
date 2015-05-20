@@ -1,0 +1,16 @@
+#!/bin/bash
+
+if [[ $# == 0 ]]; then
+    echo usage: $0 'raspbian-package [raspbian-packages...]'
+    exit 1
+fi
+
+export DEBIAN_FRONTEND=noninteractive
+ARCH=armhf
+
+for deb in "$@"; do
+    apt-get download $deb:$ARCH
+    dpkg-deb -x ${deb}_*_$ARCH.deb $TOOLCHAIN_ROOT
+done
+
+/rpxc/fix-symlinks $TOOLCHAIN_ROOT
