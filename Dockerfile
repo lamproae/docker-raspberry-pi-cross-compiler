@@ -45,5 +45,8 @@ RUN apt-get update \
 WORKDIR /build
 ENTRYPOINT ["/rpxc/entrypoint.sh"]
 
-COPY imagefiles/entrypoint.sh imagefiles/rpxc /rpxc/
+COPY imagefiles/* /rpxc/
 
+# In downstream images, automatically install requested packages.
+ONBUILD COPY *-packages.txt /rpxc/
+ONBUILD RUN /rpxc/on-build.sh
