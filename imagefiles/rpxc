@@ -49,6 +49,37 @@ command:update() {
     command:update-script
 }
 
+command:install-debian() {
+    local CONTAINER=rpxc-temp
+    docker rm -f $CONTAINER >/dev/null 2>/dev/null
+    docker run --name $CONTAINER \
+        $FINAL_IMAGE \
+        /rpxc/install-debian-packages "$@" \
+    && docker commit $CONTAINER $FINAL_IMAGE \
+    && echo Updated image: $FINAL_IMAGE.
+}
+
+help:install-debian() {
+    echo usage: rpxc install-debian package \[packages...\]
+    echo Install native debian packages into the rpxc image.
+}
+
+command:install-raspbian() {
+    local CONTAINER=rpxc-temp
+    docker rm -f $CONTAINER >/dev/null 2>/dev/null
+    echo "Installing $@"
+    docker run --name $CONTAINER \
+        $FINAL_IMAGE \
+        /rpxc/install-raspbian-packages "$@" \
+    && docker commit $CONTAINER $FINAL_IMAGE \
+    && echo Updated image: $FINAL_IMAGE.
+}
+
+help:install-raspbian() {
+    echo usage: rpxc install-raspbian package \[packages...\]
+    echo Install foreign raspbian packages into the rpxc image.
+}
+
 help:update() {
     echo Pull the latest $FINAL_IMAGE, and then update $0 from that.
 }
@@ -70,11 +101,13 @@ usage: rpxc command [args]
 By default, runs the given command in an rpxc container.
 
 Builtin commands:
+    install-debian
+    install-raspbian
     update-image
     update-script
     update
 
-For command help use: $0 help <command>
+For command-specific help: rpxc help <command>
 ENDHELP
     fi
 }
