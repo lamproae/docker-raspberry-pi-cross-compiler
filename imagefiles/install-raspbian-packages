@@ -8,6 +8,12 @@ fi
 export DEBIAN_FRONTEND=noninteractive
 ARCH=armhf
 
+# Get the filename for a given package.
+debfile() { apt-cache show $1 | grep Filename:  | sed -e 's!^.*/!!'; }
+
+# Find the dependencies for a given package.
+libdeps() { dpkg -I $1 | grep Depends: | grep -o -w 'lib[^[:space:]]*'; }
+
 apt-get update
 for deb in "$@"; do
     apt-get download $deb:$ARCH
