@@ -23,6 +23,7 @@ ENV AS=${CROSS_COMPILE}as \
 # 3. Extract only the toolchain we will be using.
 # 4. Create rpxc- prefixed symlinks in /usr/local/bin (eg. rpxc-gcc, rpxc-ld).
 # 5. Add the raspbian repo for armhf packages.
+# 6. Let automake know where our cross-compile aclocal dir is.
 WORKDIR /rpxc
 RUN sed -i -e 's/^deb /deb [arch=amd64] /' /etc/apt/sources.list \
  && apt-get update \
@@ -47,6 +48,7 @@ RUN sed -i -e 's/^deb /deb [arch=amd64] /' /etc/apt/sources.list \
  && echo deb '[arch=armhf]' http://mirrordirector.raspbian.org/raspbian/ \
         wheezy main >> /etc/apt/sources.list \
  && curl -Ls https://archive.raspbian.org/raspbian.public.key | apt-key add - \
+ && echo "$RASPBIAN_ROOT/usr/share/aclocal" >> /usr/share/aclocal/dirlist \
  ;
 
 WORKDIR /build
