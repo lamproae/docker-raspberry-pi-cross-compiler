@@ -1,23 +1,135 @@
-#!/bin/bash
+#!/usr/bin/perl
+use 5.14.0;
+use warnings;
+use File::Find qw(find);
 
-if [[ $# == 0 ]]; then
-    echo usage: $0 'raspbian-package [raspbian-packages...]'
-    exit 1
-fi
+die "usage: $0 package [packages...]" unless @ARGV;
 
-export DEBIAN_FRONTEND=noninteractive
-ARCH=armhf
+my $arch = 'armhf';
+main(@ARGV);
+exit 0;
 
-# Get the filename for a given package.
-debfile() { apt-cache show $1 | grep Filename:  | sed -e 's!^.*/!!'; }
+sub main {
+    my @packages = @_;
 
-# Find the dependencies for a given package.
-libdeps() { dpkg -I $1 | grep Depends: | grep -o -w 'lib[^[:space:]]*'; }
+    chdir '/tmp';
+    my $root = $ENV{RASPBIAN_ROOT};
+    my $manifest = '/rpxc/raspbian-manifest';
 
-apt-get update
-for deb in "$@"; do
-    apt-get download $deb:$ARCH
-    dpkg-deb -x ${deb}_*_$ARCH.deb $RASPBIAN_ROOT
-done
+    my %installed = read_manifest($manifest);
+    my %to_be_installed = process_dependencies(\%installed, @packages);
+    install_packages($root, %to_be_installed);
+    write_manifest($manifest, sort(keys %installed, keys %to_be_installed));
 
-/rpxc/fix-symlinks $RASPBIAN_ROOT
+    return 0;
+}
+
+sub read_manifest {
+    my ($filename) = @_;
+
+    my %installed;
+    if (open(my $fh, '<', $filename)) {
+        while (<$fh>) {
+            chomp;
+            s/#.*$//;   # strip comments
+            s/^\s*//;   # strip leading ws
+            s/\s*$//;   # strip trailing ws
+            next unless /\S/;
+
+            $installed{$_} = 1;
+        }
+    }
+    return %installed;
+}
+
+sub write_manifest {
+    my ($filename, @packages) = @_;
+    open(my $fh, '>', $filename) or die "Opening $filename: $!";
+    for my $pkg (@packages) {
+        say {$fh} $pkg;
+    }
+}
+
+sub process_dependencies {
+    my ($installed, @packages) = @_;
+
+    my %to_be_installed;
+    system("apt-get update");
+    exit 1 if $? != 0;
+    while (my $pkg = shift @packages) {
+        next if exists $installed->{$pkg};
+        next if exists $to_be_installed{$pkg};
+
+        my ($filename, @dependencies) = get_package_info($pkg);
+        next unless $filename;
+
+        $to_be_installed{$pkg} = $filename;
+        push(@packages, @dependencies);
+    }
+    return %to_be_installed;
+}
+
+sub get_package_info {
+    my ($pkg) = @_;
+
+    my $filename;
+    my @dependencies;
+    my $got = 0;
+    say "Querying: $pkg";
+    for my $line (qx(apt-cache show $pkg:$arch)) {
+        chomp $line;
+        if ($line =~ /^Depends:\s*(.*)\s*$/) {
+            my @entries = split(/,\s*/, $1);
+            @dependencies = grep { /^lib/ } map { s/\s.*$//r } @entries;
+            $got++;
+        }
+        elsif ($line =~/^Filename: .*\/(.*)\s*$/) {
+            $filename = $1;
+            $got++;
+        }
+    }
+    return unless $got == 2;
+    return ($filename, @dependencies);
+}
+
+sub install_packages {
+    my ($root, %packages) = @_;
+
+    my @downloads = map { "$_:$arch" } sort keys %packages;
+    system('apt-get', 'download', @downloads);
+    exit 1 if $? != 0;
+    for my $pkg (sort keys %packages) {
+        my $filename = $packages{$pkg};
+        say "Installing: $pkg";
+        system("dpkg-deb -x $filename $root");
+        exit 1 if $? != 0;
+    }
+}
+
+sub fix_symlinks {
+    my ($root) = @_;
+
+    my $errors = 0;
+    my $wanted = sub {
+        my $link = $_;
+        return unless -l $link; # not a link
+
+        my $dest = readlink $link;
+        return if -e $dest;     # not a broken link
+
+        my $newdest = $root . $dest;
+        if (-e $newdest) {
+            unlink $link;
+            symlink($newdest, $link);
+        }
+        else {
+            warn "Missing file -> $dest\n";
+            $errors++;
+        }
+    };
+    find($wanted, $root);
+    return unless $errors;
+    die "Internal error.\n" .
+        "Please raise an issue at\n" .
+        "\thttps://github.com/sdt/docker-raspberry-pi-cross-compiler/issues\n";
+}

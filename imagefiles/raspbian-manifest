@@ -1,0 +1,5 @@
+# These raspbian library packages are not required to be installed.
+# User-installed packages get added to this list.
+libc-dev-bin
+libc6
+libc6-dev
