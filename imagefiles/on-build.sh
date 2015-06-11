@@ -7,10 +7,14 @@ RASPBIAN_PACKAGES=/rpxc/raspbian-packages.txt
 
 export DEBIAN_FRONTEND=noninteractive
 
+uncomment() {
+    sed -e 's/\s*#.*$//; /^\s*$/d' "$@"
+}
+
 if [[ -e $DEBIAN_PACKAGES ]] ; then
-    cat $DEBIAN_PACKAGES | xargs -r /rpxc/install-debian-packages
+    uncomment $DEBIAN_PACKAGES | xargs -r /rpxc/install-debian-packages
 fi
 
 if [[ -e $RASPBIAN_PACKAGES ]] ; then
-    cat $RASPBIAN_PACKAGES | xargs -r /rpxc/install-raspbian-packages
+    uncomment $RASPBIAN_PACKAGES | xargs -r /rpxc/install-raspbian-packages
 fi
