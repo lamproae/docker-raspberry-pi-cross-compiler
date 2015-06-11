@@ -56,5 +56,8 @@ ENTRYPOINT ["/rpxc/entrypoint.sh"]
 COPY imagefiles/* /rpxc/
 
 # In downstream images, automatically install requested packages.
-ONBUILD COPY *-packages.txt /rpxc/
+# We don't need to copy the Dockerfile, but the following COPY command fails
+# if there are no *-packages.txt files. I figure there's going to be a
+# Dockerfile around.
+ONBUILD COPY *-packages.txt Dockerfile /rpxc/
 ONBUILD RUN /rpxc/on-build.sh
