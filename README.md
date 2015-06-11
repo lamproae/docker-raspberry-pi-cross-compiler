@@ -1,6 +1,6 @@
 # Raspberry Pi cross-compilation in a Docker container.
 
-Installs [the Raspberry Pi cross-compilation toolchain](https://github.com/raspberrypi/tools) onto the [ubuntu:trusty Docker image](https://registry.hub.docker.com/_/ubuntu/).
+Installs [the Raspberry Pi cross-compilation toolchain](https://github.com/raspberrypi/tools) onto the [official debian:wheezy Docker image](https://registry.hub.docker.com/_/debian/).
 
 This project is available as [sdt4docker/raspberry-pi-cross-compiler](https://registry.hub.docker.com/u/sdt4docker/raspberry-pi-cross-compiler/) on [Docker Hub](https://hub.docker.com/), and as [sdt/docker-raspberry-pi-cross-compiler](https://github.com/sdt/docker-raspberry-pi-cross-compiler) on [GitHub](https://github.com).
 
@@ -9,6 +9,7 @@ Please raise any issues on the [GitHub issue tracker](https://github.com/sdt/doc
 ## Features
 
 * the gcc-linaro-arm-linux-gnueabihf-raspbian toolchain from [raspberrypi/tools](https://github.com/raspberrypi/tools)
+* easy installation of raspbian-native development packages
 * commands in the container are run as the calling user, so that any created files have the expected ownership (ie. not root)
 * make variables (`CC`, `LD` etc) are set to point to the appropriate tools in the container
 * `ARCH`, `CROSS_COMPILE` and `HOST` environment variables are set in the container
@@ -44,6 +45,20 @@ If the command matches one of the rpxc built-in commands (see below), that will 
 To force a command to run inside the container (in case of a name clash with a built-in command), use `--` before the command.
 
 ### Built-in commands
+
+`rpxc install-debian package packages...`
+
+Install native (x64) packages into the rpxc image.
+
+eg. `rpxc install-debian cmake`
+
+`rpxc install-raspbian package packages...`
+
+Install raspbian (armhf) development packages from the raspbian repositorires into the rpxc image. These will be available for use with your rpxc builds.
+
+eg. `rpxc install-debian cmake`
+
+`rpxc install-debian package packages...`
 
 `rpxc update-image`
 
