@@ -9,6 +9,7 @@ ENV HOST=arm-linux-gnueabihf \
 # a var in the same command.
 ENV ARCH=arm \
     RASPBIAN_ROOT=/rpxc/$TOOLCHAIN/$HOST/libc \
+    PREFIX=/rpxc/$TOOLCHAIN/$HOST/libc/usr \
     CROSS_COMPILE=/rpxc/$TOOLCHAIN/bin/$HOST-
 ENV AS=${CROSS_COMPILE}as \
     AR=${CROSS_COMPILE}ar \
@@ -32,6 +33,7 @@ RUN sed -i -e 's/^deb /deb [arch=amd64] /' /etc/apt/sources.list \
         curl \
         flex \
         lib32z1 \
+        lib32stdc++6 \
         make \
         runit \
  &&  curl -s -L https://github.com/raspberrypi/tools/tarball/master \
@@ -45,6 +47,7 @@ RUN sed -i -e 's/^deb /deb [arch=amd64] /' /etc/apt/sources.list \
         wheezy main >> /etc/apt/sources.list \
  && curl -Ls https://archive.raspbian.org/raspbian.public.key | apt-key add - \
  && echo "$RASPBIAN_ROOT/usr/share/aclocal" >> /usr/share/aclocal/dirlist \
+ && rm -rf /var/lib/apt/lists/* \
  ;
 
 WORKDIR /build
