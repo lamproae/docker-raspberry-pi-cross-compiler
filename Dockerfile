@@ -54,7 +54,7 @@ RUN sed -i -e 's/^deb /deb [arch=amd64] /' /etc/apt/sources.list \
 WORKDIR /build
 ENTRYPOINT ["/rpxc/entrypoint.sh"]
 
-COPY imagefiles/* /rpxc/
+COPY image/* /rpxc/
 
 # In downstream images, automatically install requested packages.
 # We don't need to copy the Dockerfile, but the following COPY command fails
