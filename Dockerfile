@@ -1,4 +1,4 @@
-FROM debian:wheezy
+FROM debian:jessie
 MAINTAINER Stephen Thirlwall <sdt@dr.com>
 
 # Here is where we hardcode the toolchain decision.
@@ -36,7 +36,8 @@ RUN sed -i -e 's/^deb /deb [arch=amd64] /' /etc/apt/sources.list \
         lib32stdc++6 \
         make \
         runit \
- &&  curl -s -L https://github.com/raspberrypi/tools/tarball/master \
+ && echo Fetching raspberrypi/tools tarball from github \
+ && curl -s -L https://github.com/raspberrypi/tools/tarball/master \
      | tar --wildcards --strip-components 2 -xzf - "*/arm-bcm2708/$TOOLCHAIN/" \
  && mkdir -p /usr/local/bin \
  && for i in ${CROSS_COMPILE}*; do \
@@ -44,7 +45,7 @@ RUN sed -i -e 's/^deb /deb [arch=amd64] /' /etc/apt/sources.list \
     done \
  && dpkg --add-architecture armhf \
  && echo deb '[arch=armhf]' http://mirrordirector.raspbian.org/raspbian/ \
-        wheezy main >> /etc/apt/sources.list \
+        jessie main >> /etc/apt/sources.list \
  && curl -Ls https://archive.raspbian.org/raspbian.public.key | apt-key add - \
  && echo "$RASPBIAN_ROOT/usr/share/aclocal" >> /usr/share/aclocal/dirlist \
  && rm -rf /var/lib/apt/lists/* \
