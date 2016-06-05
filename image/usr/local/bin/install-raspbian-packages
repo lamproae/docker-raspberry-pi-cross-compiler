@@ -2,6 +2,10 @@
 use 5.14.0;
 use warnings;
 use File::Find qw(find);
+use File::Temp qw(tempdir);
+
+my $package_filename = '/rpxc/Packages';
+my $package_root = 'http://mirrordirector.raspbian.org/raspbian';
 
 die "usage: $0 package [packages...]" unless @ARGV;
 
@@ -10,18 +14,21 @@ main(@ARGV);
 exit 0;
 
 sub main {
-    my @packages = @_;
-
-    chdir '/tmp';
-    my $root = $ENV{RASPBIAN_ROOT};
     my $manifest = '/rpxc/raspbian-manifest';
+    my $dir = tempdir(CLEANUP => 1);
+    chdir($dir);
+    my @requested_packages = @_;
+    my $installed = read_manifest($manifest);
+    my $packages = load_packages($package_filename);
+    my $install_root = $ENV{RASPBIAN_ROOT};
 
-    my %installed = read_manifest($manifest);
-    my %to_be_installed = process_dependencies(\%installed, @packages);
-    install_packages($root, %to_be_installed);
-    write_manifest($manifest, sort(keys %installed, keys %to_be_installed));
+    my $installation_list = process_dependencies($installed, $packages, @requested_packages);
 
-    return 0;
+    if (@$installation_list) {
+        download_packages($installation_list);
+        install_packages($install_root, $installation_list);
+        write_manifest($manifest, $installed);
+    }
 }
 
 sub read_manifest {
@@ -39,7 +46,7 @@ sub read_manifest {
             $installed{$_} = 1;
         }
     }
-    return %installed;
+    return \%installed;
 }
 
 sub write_manifest {
@@ -51,57 +58,46 @@ sub write_manifest {
 }
 
 sub process_dependencies {
-    my ($installed, @packages) = @_;
+    my ($seen, $packages, @requested_packages) = @_;
 
-    my %to_be_installed;
-    system("apt-get update");
-    exit 1 if $? != 0;
-    while (my $pkg = shift @packages) {
-        next if exists $installed->{$pkg};
-        next if exists $to_be_installed{$pkg};
-
-        my ($filename, @dependencies) = get_package_info($pkg);
-        next unless $filename;
-
-        $to_be_installed{$pkg} = $filename;
-        push(@packages, @dependencies);
+    for my $name (@requested_packages) {
+        say "$name is already installed." if $seen->{$name};
     }
-    return %to_be_installed;
+
+    my @installation_list;
+
+    say "Querying dependencies...";
+    while (my $name = shift @requested_packages) {
+        next if $seen->{$name};
+        $seen->{$name} = 1;
+
+        my $pkg = $packages->{$name};
+        unshift(@installation_list, $pkg->{filename});
+        push(@requested_packages, grep { /^lib/ } @{ $pkg->{depends} });
+    }
+    return \@installation_list;
 }
 
-sub get_package_info {
-    my ($pkg) = @_;
-
-    my $filename;
-    my @dependencies;
-    my $got = 0;
-    say "Querying: $pkg";
-    for my $line (qx(apt-cache show $pkg:$arch)) {
-        chomp $line;
-        if ($line =~ /^Depends:\s*(.*)\s*$/) {
-            my @entries = split(/,\s*/, $1);
-            @dependencies = grep { /^lib/ } map { s/\s.*$//r } @entries;
-            $got++;
-        }
-        elsif ($line =~/^Filename: .*\/(.*)\s*$/) {
-            $filename = $1;
-            $got++;
-        }
+sub download_packages {
+    my ($paths) = @_;
+    say "Downloading packages...";
+    for my $path (@$paths) {
+        say "Downloading $path";
+        my $deb = $path;
+        $deb =~ s{.*/}{};
+        system('curl', '-sL', '-o', $deb, "$package_root/$path");
+        exit 1 if $? != 0;
     }
-    return unless $got == 2;
-    return ($filename, @dependencies);
 }
 
 sub install_packages {
-    my ($root, %packages) = @_;
+    my ($install_root, $paths) = @_;
 
-    my @downloads = map { "$_:$arch" } sort keys %packages;
-    system('apt-get', 'download', @downloads);
-    exit 1 if $? != 0;
-    for my $pkg (sort keys %packages) {
-        my $filename = $packages{$pkg};
-        say "Installing: $pkg";
-        system("dpkg-deb -x $filename $root");
+    say "Installing packages...";
+    for my $deb (@$paths) {
+        $deb =~ s{.*/}{};
+        say "Installing: $deb";
+        system('dpkg-deb', '-x', $deb, $install_root);
         exit 1 if $? != 0;
     }
 }
@@ -132,4 +128,48 @@ sub fix_symlinks {
     die "Internal error.\n" .
         "Please raise an issue at\n" .
         "\thttps://github.com/sdt/docker-raspberry-pi-cross-compiler/issues\n";
+}
+
+sub load_packages {
+    my ($filename) = @_;
+
+    say 'Loading package database...';
+    my @fields = qw( Package Filename Depends );
+    my %wanted;
+    $wanted{$_} = 1 for @fields;
+
+    my $package = { };
+    my $field;
+
+    my %packages;
+
+    open(my $fh, '<', $filename) or die "Opening $filename: $!\n";
+    while (my $line = <$fh>) {
+        chomp $line;
+        if ($line eq '') {
+            my $name = $package->{Package};
+            if (exists $packages{$name}) {
+#use Data::Dumper::Concise; print STDERR Dumper($packages{$name});
+#use Data::Dumper::Concise; print STDERR Dumper($package);
+                die;
+            }
+
+            $packages{$name} = {
+                name => $name,
+                version => $package->{Version},
+                filename => $package->{Filename},
+                depends => [
+                    map { s/ .*$//r } split(/,\s*/, $package->{Depends} // '')
+                ],
+            };
+            $package = { };
+        }
+        elsif ($line =~ /^(\S+): (.*)$/) {
+            if ($wanted{$1}) {
+                $package->{$1} = $2;
+            }
+        }
+    }
+
+    return \%packages;
 }

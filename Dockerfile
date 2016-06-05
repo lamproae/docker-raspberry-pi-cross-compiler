@@ -35,9 +35,9 @@ RUN sed -i -e 's/^deb /deb [arch=amd64] /' /etc/apt/sources.list \
         lib32z1 \
         lib32stdc++6 \
         make \
-        runit \
- && echo Fetching raspberrypi/tools tarball from github \
- && curl -s -L https://github.com/raspberrypi/tools/tarball/master \
+        runit
+RUN echo Fetching raspberrypi/tools tarball from github \
+ && curl -L https://github.com/raspberrypi/tools/tarball/master \
      | tar --wildcards --strip-components 2 -xzf - "*/arm-bcm2708/$TOOLCHAIN/" \
  && mkdir -p /usr/local/bin \
  && for i in ${CROSS_COMPILE}*; do \

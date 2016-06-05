@@ -49,14 +49,21 @@ command:update() {
     command:update-script
 }
 
-command:install-debian() {
-    local CONTAINER=rpxc-temp
+install-packages() {
+    local installer=$1
+    shift
+
+    CONTAINER=rpxc-temp-$$
     docker rm -f $CONTAINER >/dev/null 2>/dev/null
-    docker run --name $CONTAINER \
-        $FINAL_IMAGE \
-        /rpxc/install-debian-packages "$@" \
-    && docker commit $CONTAINER $FINAL_IMAGE \
-    && echo Updated image: $FINAL_IMAGE.
+    set -e
+    docker run -ti --name $CONTAINER $FINAL_IMAGE $installer "$@"
+    docker commit $CONTAINER $FINAL_IMAGE
+    docker rm -f $CONTAINER
+    echo Updated image: $FINAL_IMAGE.
+}
+
+command:install-debian() {
+    install-packages install-debian-packages "$@"
 }
 
 help:install-debian() {
@@ -65,14 +72,7 @@ help:install-debian() {
 }
 
 command:install-raspbian() {
-    local CONTAINER=rpxc-temp
-    docker rm -f $CONTAINER >/dev/null 2>/dev/null
-    echo "Installing $@"
-    docker run --name $CONTAINER \
-        $FINAL_IMAGE \
-        /rpxc/install-raspbian-packages "$@" \
-    && docker commit $CONTAINER $FINAL_IMAGE \
-    && echo Updated image: $FINAL_IMAGE.
+    install-packages install-raspbian-packages "$@"
 }
 
 help:install-raspbian() {
