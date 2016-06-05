@@ -51,7 +51,9 @@ RUN sed -i -e 's/^deb /deb [arch=amd64] /' /etc/apt/sources.list \
  && rm -rf /var/lib/apt/lists/* \
  ;
 
+RUN curl -L http://mirrordirector.raspbian.org/raspbian/dists/jessie/main/binary-armhf/Packages.gz | gunzip > /rpxc/Packages
+
 WORKDIR /build
 ENTRYPOINT ["/rpxc/entrypoint.sh"]
 
-COPY image/* /rpxc/
+COPY image/ /
