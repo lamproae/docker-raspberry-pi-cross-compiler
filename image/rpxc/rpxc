@@ -63,21 +63,23 @@ install-packages() {
 }
 
 command:install-debian() {
-    install-packages install-debian-packages "$@"
+    install-packages install-debian "$@"
 }
 
 help:install-debian() {
     echo usage: rpxc install-debian package \[packages...\]
     echo Install native debian packages into the rpxc image.
+    echo note: the changes are written back to the original rpxc image
 }
 
 command:install-raspbian() {
-    install-packages install-raspbian-packages "$@"
+    install-packages install-raspbian "$@"
 }
 
 help:install-raspbian() {
     echo usage: rpxc install-raspbian package \[packages...\]
     echo Install foreign raspbian packages into the rpxc image.
+    echo note: the changes are written back to the original rpxc image
 }
 
 help:update() {
