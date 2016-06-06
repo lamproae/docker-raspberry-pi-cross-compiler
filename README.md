@@ -1,4 +1,4 @@
-# Raspberry Pi Cross-Compiler in a Docker container.
+# Raspberry Pi Cross-Compiler in a Docker Container.
 
 This image contains the [the Raspberry Pi cross-compilation toolchain](https://github.com/raspberrypi/tools), some common build tools, and a custom tool to install native Raspbian development packages.
 
@@ -120,7 +120,12 @@ export RPXC_IMAGE=my-custom-rpxc-image
 docker build -t $RPXC_IMAGE .
 ```
 
-### With the RPXC_IMAGE variable set, rpxc will automatically use your new image.
+### With RPXC_IMAGE set, rpxc will automatically use your new image.
+
+```sh
+rpxc ./configure
+rpxc make
+```
 
 ## Examples
 
