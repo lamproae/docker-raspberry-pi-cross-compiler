@@ -1,0 +1,59 @@
+#!/usr/bin/env perl
+
+use 5.20.0;
+use warnings;
+
+die "usage: $0 [curl-options] url file"
+    unless @ARGV >= 2;
+
+exit(main(@ARGV) ? 0 : 1);
+
+sub main {
+    my @args = splice(@_, 0, @_-2);
+    my ($url, $datafile) = @_;
+
+    my $etagfile = "$datafile.etag";
+    my $tempfile = "$datafile.tmp";
+    my $header = '';
+    push(@args, -o => $tempfile, -D => '-');
+    if (-e $datafile && -e $etagfile) {
+		my $etag = slurp($etagfile);
+        push(@args, -H => "If-None-Match: $etag");
+    }
+    push(@args, -L => $url);
+
+    open(my $pipe, '-|', curl => @args) or die "Fetching $url: $!\n";
+    my @headers = <$pipe>;
+    close $pipe or die "Fetching $url: $!\n";
+
+    my $result = shift @headers;
+    print $result;
+    if ($result =~ / 200 /) {
+        if (my $etag = get_etag(@headers)) {
+            open(my $fh, '>', $etagfile);
+            say {$fh} $etag;
+        }
+        rename($tempfile, $datafile);
+    }
+    else {
+        unlink($tempfile);
+    }
+    return $result =~ / (200|304) /;
+}
+
+sub get_etag {
+    my @headers = @_;
+    for my $header (@headers) {
+        if ($header =~ /^ETag: (.*)$/) {
+            return $1;
+        }
+    }
+    return;
+}
+
+sub slurp {
+    my ($file) = @_;
+    open my $fh, '<', $file or die "Opening $file: $!\n";
+    local $/ = undef;
+	return <$fh>;
+}

@@ -30,12 +30,15 @@ RUN sed -i -e 's/^deb /deb [arch=amd64] /' /etc/apt/sources.list \
  && apt-get update \
  && DEBIAN_FRONTEND=noninteractive apt-get install -y \
         automake \
+        cmake \
         curl \
         flex \
+        git \
         lib32z1 \
         lib32stdc++6 \
         make \
-        runit
+        runit \
+        xz-utils
 RUN echo Fetching raspberrypi/tools tarball from github \
  && curl -L https://github.com/raspberrypi/tools/tarball/master \
      | tar --wildcards --strip-components 2 -xzf - "*/arm-bcm2708/$TOOLCHAIN/" \
@@ -43,15 +46,9 @@ RUN echo Fetching raspberrypi/tools tarball from github \
  && for i in ${CROSS_COMPILE}*; do \
         ln -sf $i /usr/local/bin/rpxc-${i#$CROSS_COMPILE}; \
     done \
- && dpkg --add-architecture armhf \
- && echo deb '[arch=armhf]' http://mirrordirector.raspbian.org/raspbian/ \
-        jessie main >> /etc/apt/sources.list \
- && curl -Ls https://archive.raspbian.org/raspbian.public.key | apt-key add - \
  && echo "$RASPBIAN_ROOT/usr/share/aclocal" >> /usr/share/aclocal/dirlist \
  && rm -rf /var/lib/apt/lists/* \
  ;
-
-RUN curl -L http://mirrordirector.raspbian.org/raspbian/dists/jessie/main/binary-armhf/Packages.gz | gunzip > /rpxc/Packages
 
 WORKDIR /build
 ENTRYPOINT ["/rpxc/entrypoint.sh"]

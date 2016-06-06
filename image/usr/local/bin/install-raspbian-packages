@@ -4,8 +4,8 @@ use warnings;
 use File::Find qw(find);
 use File::Temp qw(tempdir);
 
-my $package_filename = '/rpxc/Packages';
 my $package_root = 'http://mirrordirector.raspbian.org/raspbian';
+my $local_root = '/rpxc';
 
 die "usage: $0 package [packages...]" unless @ARGV;
 
@@ -14,20 +14,28 @@ main(@ARGV);
 exit 0;
 
 sub main {
-    my $manifest = '/rpxc/raspbian-manifest';
+    my $manifest = "$local_root/raspbian-manifest";
     my $dir = tempdir(CLEANUP => 1);
     chdir($dir);
-    my @requested_packages = @_;
-    my $installed = read_manifest($manifest);
-    my $packages = load_packages($package_filename);
-    my $install_root = $ENV{RASPBIAN_ROOT};
 
-    my $installation_list = process_dependencies($installed, $packages, @requested_packages);
+    my $installed = read_manifest($manifest);
+    my $requested_packages = filter_requested_list($installed, \@_);
+    if (!@$requested_packages) {
+        say "Nothing to do";
+        exit 0;
+    }
+
+    my $package_filename = "$local_root/Packages.xz";
+    fetch_package_list("$package_root/dists/jessie/main/binary-armhf/Packages.xz", $package_filename);
+    my $packages = load_package_list($package_filename);
+
+    my $installation_list = process_dependencies($installed, $packages, $requested_packages);
 
     if (@$installation_list) {
         download_packages($installation_list);
-        install_packages($install_root, $installation_list);
+        install_packages($ENV{RASPBIAN_ROOT}, $installation_list);
         write_manifest($manifest, $installed);
+        fix_symlinks($ENV{RASPBIAN_ROOT});
     }
 }
 
@@ -57,23 +65,34 @@ sub write_manifest {
     }
 }
 
-sub process_dependencies {
-    my ($seen, $packages, @requested_packages) = @_;
+sub filter_requested_list {
+    my ($seen, $requested) = @_;
 
-    for my $name (@requested_packages) {
-        say "$name is already installed." if $seen->{$name};
+    my @filtered;
+    for my $name (@$requested) {
+        if ($seen->{$name}) {
+            say "$name is already installed";
+        }
+        else {
+            push(@filtered, $name);
+        }
     }
+    return \@filtered;
+}
+
+sub process_dependencies {
+    my ($seen, $packages, $requested_packages) = @_;
 
     my @installation_list;
 
     say "Querying dependencies...";
-    while (my $name = shift @requested_packages) {
+    while (my $name = shift @$requested_packages) {
         next if $seen->{$name};
         $seen->{$name} = 1;
 
         my $pkg = $packages->{$name};
         unshift(@installation_list, $pkg->{filename});
-        push(@requested_packages, grep { /^lib/ } @{ $pkg->{depends} });
+        push(@$requested_packages, grep { /^lib/ } @{ $pkg->{depends} });
     }
     return \@installation_list;
 }
@@ -105,8 +124,16 @@ sub install_packages {
 sub fix_symlinks {
     my ($root) = @_;
 
+    say "Checking $root for broken symlinks...";
+
     my $errors = 0;
     my $wanted = sub {
+        if (-d $_ && $_ eq 'doc') {
+            # Skip doc directories.
+            $File::Find::prune = 1;
+            return;
+        }
+
         my $link = $_;
         return unless -l $link; # not a link
 
@@ -130,7 +157,23 @@ sub fix_symlinks {
         "\thttps://github.com/sdt/docker-raspberry-pi-cross-compiler/issues\n";
 }
 
-sub load_packages {
+sub fetch_package_list {
+    my ($url, $filename) = @_;
+
+    say 'Fetching package list...';
+    my $result = qx( curl-etag $url $filename );
+    if ($result =~ / 200 /) {
+        say 'Package list updated';
+    }
+    elsif ($result =~ / 304 /) {
+        say 'Package list already up-to-date';
+    }
+    else {
+        die $result;
+    }
+}
+
+sub load_package_list {
     my ($filename) = @_;
 
     say 'Loading package database...';
@@ -143,7 +186,8 @@ sub load_packages {
 
     my %packages;
 
-    open(my $fh, '<', $filename) or die "Opening $filename: $!\n";
+    open(my $fh, '-|', 'xzcat', $filename)
+        or die "Decompressing $filename: $!\n";
     while (my $line = <$fh>) {
         chomp $line;
         if ($line eq '') {
@@ -170,6 +214,7 @@ sub load_packages {
             }
         }
     }
+    close($fh) or die "Decompressing $filename: $!\n";
 
     return \%packages;
 }
