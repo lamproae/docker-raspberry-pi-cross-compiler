@@ -1,6 +1,6 @@
-# Raspberry Pi cross-compilation in a Docker container.
+# Raspberry Pi Cross-Compiler in a Docker container.
 
-Installs [the Raspberry Pi cross-compilation toolchain](https://github.com/raspberrypi/tools) onto the [official debian:wheezy Docker image](https://registry.hub.docker.com/_/debian/).
+This image contains the [the Raspberry Pi cross-compilation toolchain](https://github.com/raspberrypi/tools), some common build tools, and a custom tool to install native Raspbian development packages.
 
 This project is available as [sdt4docker/raspberry-pi-cross-compiler](https://registry.hub.docker.com/u/sdt4docker/raspberry-pi-cross-compiler/) on [Docker Hub](https://hub.docker.com/), and as [sdt/docker-raspberry-pi-cross-compiler](https://github.com/sdt/docker-raspberry-pi-cross-compiler) on [GitHub](https://github.com).
 
@@ -8,7 +8,7 @@ Please raise any issues on the [GitHub issue tracker](https://github.com/sdt/doc
 
 ## Features
 
-* the gcc-linaro-arm-linux-gnueabihf-raspbian toolchain from [raspberrypi/tools](https://github.com/raspberrypi/tools)
+* gcc-linaro-arm-linux-gnueabihf-raspbian toolchain from [raspberrypi/tools](https://github.com/raspberrypi/tools)
 * easy installation of raspbian-native development packages
 * commands in the container are run as the calling user, so that any created files have the expected ownership (ie. not root)
 * make variables (`CC`, `LD` etc) are set to point to the appropriate tools in the container
@@ -25,9 +25,8 @@ To install the helper script, run the image with no arguments, and redirect the 
 
 eg.
 ```
-docker run sdt4docker/raspberry-pi-cross-compiler > rpxc
-chmod +x rpxc
-mv rpxc ~/bin/
+docker run sdt4docker/raspberry-pi-cross-compiler > ~/bin/rpxc
+chmod +x ~/bin/rpxc
 ```
 
 ## Usage
@@ -64,6 +63,8 @@ eg. `rpxc install-debian cmake`
 
 Fetch the latest version of the docker image.
 
+If a new docker image is available, any extra packages installed with `install-debian` or `install-raspbian` _will be lost_.
+
 ---
 
 `rpxc update-script`
@@ -95,6 +96,31 @@ Default: sdt4docker/raspberry-pi-cross-compiler
 ### RPXC_ARGS / --args &lt;docker-run-args&gt;
 
 Extra arguments to pass to the `docker run` command.
+
+## Custom Images
+
+Using `rpxc install-debian` and `rpxc install-raspbian` are really only intended for getting a build environment together. Once you've figured out which debian and raspbian packages you need, it's better to create a custom downstream image that has all your tools and development packages built in.
+
+### Create a Dockerfile
+
+```Dockerfile
+FROM sdt4docker/raspberry-pi-cross-compiler
+
+# Install some native build-time tools
+RUN install-debian scons
+
+# Install raspbian development libraries
+RUN install-raspbian libboost-dev-all
+```
+
+### Name your image with an RPXC_IMAGE variable and build the image
+
+```sh
+export RPXC_IMAGE=my-custom-rpxc-image
+docker build -t $RPXC_IMAGE .
+```
+
+### With the RPXC_IMAGE variable set, rpxc will automatically use your new image.
 
 ## Examples
 
