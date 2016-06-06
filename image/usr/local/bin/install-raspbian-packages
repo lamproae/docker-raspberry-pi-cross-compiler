@@ -26,7 +26,7 @@ sub main {
     }
 
     my $package_filename = "$local_root/Packages.xz";
-    fetch_package_list("$package_root/dists/jessie/main/binary-armhf/Packages.xz", $package_filename);
+    fetch_package_list("$package_root/dists/wheezy/main/binary-armhf/Packages.xz", $package_filename);
     my $packages = load_package_list($package_filename);
 
     my $installation_list = process_dependencies($installed, $packages, $requested_packages);
@@ -91,6 +91,7 @@ sub process_dependencies {
         $seen->{$name} = 1;
 
         my $pkg = $packages->{$name};
+        next unless exists $packages->{$name};
         unshift(@installation_list, $pkg->{filename});
         push(@$requested_packages, grep { /^lib/ } @{ $pkg->{depends} });
     }

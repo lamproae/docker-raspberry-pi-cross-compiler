@@ -1,4 +1,4 @@
-FROM debian:jessie
+FROM debian:wheezy
 MAINTAINER Stephen Thirlwall <sdt@dr.com>
 
 # Here is where we hardcode the toolchain decision.
