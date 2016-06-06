@@ -4,7 +4,6 @@ use warnings;
 use File::Find qw(find);
 use File::Temp qw(tempdir);
 
-my $package_root = 'http://mirrordirector.raspbian.org/raspbian';
 my $local_root = '/rpxc';
 
 die "usage: $0 package [packages...]" unless @ARGV;
@@ -25,9 +24,8 @@ sub main {
         exit 0;
     }
 
-    my $package_filename = "$local_root/Packages.xz";
-    fetch_package_list("$package_root/dists/wheezy/main/binary-armhf/Packages.xz", $package_filename);
-    my $packages = load_package_list($package_filename);
+    fetch_package_list($ENV{RASPBIAN_PACKAGE_URL}, $ENV{RASPBIAN_PACKAGE_FILE});
+    my $packages = load_package_list($ENV{RASPBIAN_PACKAGE_FILE});
 
     my $installation_list = process_dependencies($installed, $packages, $requested_packages);
 
@@ -105,7 +103,7 @@ sub download_packages {
         say "Downloading $path";
         my $deb = $path;
         $deb =~ s{.*/}{};
-        system('curl', '-sL', '-o', $deb, "$package_root/$path");
+        system('curl', '-sL', '-o', $deb, "$ENV{RASPBIAN_MIRROR}/$path");
         exit 1 if $? != 0;
     }
 }
