@@ -5,10 +5,10 @@ use File::Find qw(find);
 use File::Temp qw(tempdir);
 
 my $local_root = '/rpxc';
+my $arch = 'armhf';
 
 die "usage: $0 package [packages...]" unless @ARGV;
 
-my $arch = 'armhf';
 main(@ARGV);
 exit 0;
 
@@ -93,12 +93,13 @@ sub process_dependencies {
         unshift(@installation_list, $pkg->{filename});
         push(@$requested_packages, grep { /^lib/ } @{ $pkg->{depends} });
     }
-    return \@installation_list;
+    return [ sort @installation_list ];
 }
 
 sub download_packages {
     my ($paths) = @_;
-    say "Downloading packages...";
+    my $count = @$paths;
+    say "Downloading $count packages...";
     for my $path (@$paths) {
         say "Downloading $path";
         my $deb = $path;
@@ -111,7 +112,8 @@ sub download_packages {
 sub install_packages {
     my ($install_root, $paths) = @_;
 
-    say "Installing packages...";
+    my $count = @$paths;
+    say "Installing $count packages...";
     for my $deb (@$paths) {
         $deb =~ s{.*/}{};
         say "Installing: $deb";
@@ -145,15 +147,15 @@ sub fix_symlinks {
             symlink($newdest, $link);
         }
         else {
-            warn "Missing file -> $dest\n";
+            warn "Broken symlink $File::Find::name -> $dest\n";
             $errors++;
         }
     };
     find($wanted, $root);
     return unless $errors;
-    die "Internal error.\n" .
-        "Please raise an issue at\n" .
-        "\thttps://github.com/sdt/docker-raspberry-pi-cross-compiler/issues\n";
+    warn "Broken symlinks found.\n" .
+         "Please raise an issue at\n" .
+         "\thttps://github.com/sdt/docker-raspberry-pi-cross-compiler/issues\n";
 }
 
 sub fetch_package_list {
@@ -176,7 +178,7 @@ sub load_package_list {
     my ($filename) = @_;
 
     say 'Loading package database...';
-    my @fields = qw( Package Filename Depends );
+    my @fields = qw( Package Filename Depends Recommends );
     my %wanted;
     $wanted{$_} = 1 for @fields;
 
@@ -202,7 +204,10 @@ sub load_package_list {
                 version => $package->{Version},
                 filename => $package->{Filename},
                 depends => [
-                    map { s/ .*$//r } split(/,\s*/, $package->{Depends} // '')
+                    map { s/ .*$//r } (
+                        split(/,\s*/, $package->{Depends} // ''),
+                        split(/,\s*/, $package->{Recommends} // ''),
+                    )
                 ],
             };
             $package = { };
