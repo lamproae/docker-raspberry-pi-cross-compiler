@@ -50,6 +50,13 @@ RUN echo Fetching raspberrypi/tools tarball from github \
  && rm -rf /var/lib/apt/lists/* \
  ;
 
+ENV RASPBIAN_MIRROR=http://mirrordirector.raspbian.org/raspbian \
+    RASPBIAN_RELEASE=wheezy
+ENV RASPBIAN_PACKAGE_URL=$RASPBIAN_MIRROR/dists/$RASPBIAN_RELEASE/main/binary-armhf/Packages.xz \
+    RASPBIAN_PACKAGE_FILE=/rpxc/Packages.xz
+COPY image/usr/local/bin/curl-etag /usr/local/bin/
+RUN curl-etag $RASPBIAN_PACKAGE_URL $RASPBIAN_PACKAGE_FILE
+
 WORKDIR /build
 ENTRYPOINT ["/rpxc/entrypoint.sh"]
 
